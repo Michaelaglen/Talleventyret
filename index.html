@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Talleventyret 🌟</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { min-height: 100%; }
+    body { background: #100820; }
+    @keyframes pop      { 0%{transform:scale(0) rotate(-12deg);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+    @keyframes shake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+    @keyframes bop      { 0%,100%{transform:scale(1)} 40%{transform:scale(1.22)} 70%{transform:scale(.92)} }
+    @keyframes slideUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes starSpin { from{transform:rotate(0deg) scale(0)} to{transform:rotate(360deg) scale(1)} }
+    @keyframes successGlow { 0%,100%{box-shadow:0 0 8px rgba(67,160,71,.5)} 50%{box-shadow:0 0 24px rgba(67,160,71,.9)} }
+    @keyframes floatY   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    @keyframes starFall { 0%{transform:translateY(-30px) scale(.2) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) scale(1) rotate(520deg);opacity:0} }
+    @keyframes rankBurst{ 0%{transform:scale(0) rotate(-10deg);opacity:0} 65%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+    .pop   { animation: pop .38s ease both; }
+    .sup   { animation: slideUp .4s ease both; }
+    .float { animation: floatY 3s ease-in-out infinite; }
+    button { font-family: 'Nunito', cursive; cursor: pointer; border: none; }
+    button:disabled { cursor: default; }
+    .game-btn { transition: transform .12s, box-shadow .12s !important; }
+    .game-btn:hover:not(:disabled) { transform: scale(1.08) !important; box-shadow: 0 0 26px rgba(124,77,255,.8) !important; filter: brightness(1.18); }
+    .game-btn:active:not(:disabled) { transform: scale(0.95) !important; }
+    .seg-card { transition: background .15s, transform .12s; }
+    .seg-card:hover { background: rgba(255,255,255,.11) !important; transform: translateY(-2px); }
+    .seg-card:active { transform: translateY(0) !important; }
+    .info-btn { transition: background .15s, color .15s !important; }
+    .info-btn:hover { background: rgba(255,255,255,.2) !important; color: #fff !important; }
+    .slid-t { -webkit-appearance:none; appearance:none; width:100%; height:10px; background:rgba(255,255,255,.12); border-radius:5px; outline:none; cursor:pointer; }
+    .slid-t::-webkit-slider-thumb { -webkit-appearance:none; width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#7C4DFF,#E040FB); cursor:pointer; box-shadow:0 0 14px rgba(124,77,255,.7); }
+    .slid-t::-moz-range-thumb { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#7C4DFF,#E040FB); border:none; cursor:pointer; }
+  </style>
+</head>
+<body>
+
+<!-- YouTube player: hidden, audio only -->
+<div id="yt-player" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden;"></div>
+<div id="root"></div>
+
+<!-- YouTube music setup (plain JS, runs before Babel) -->
+<script>
+var ytPlayer   = null;
+var ytMuted    = false;
+var ytStarted  = false;
+
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('yt-player', {
+    videoId: 'w6opkf-byTI',
+    playerVars: {
+      autoplay:        0,
+      controls:        0,
+      loop:            1,
+      playlist:        'w6opkf-byTI',
+      rel:             0,
+      iv_load_policy:  3,
+      modestbranding:  1,
+    },
+    events: {
+      onReady: function(e) {
+        e.target.setVolume(15);
+        if (ytMuted)   e.target.mute();
+        if (ytStarted) e.target.playVideo();
+      },
+    }
+  });
+};
+
+function startYTMusic() {
+  ytStarted = true;
+  if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+}
+
+function setYTMuted(m) {
+  ytMuted = m;
+  if (!ytPlayer) return;
+  if (m) ytPlayer.mute(); else ytPlayer.unMute();
+}
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── CONSTANTS ──────────────────────────────────────────────
+const EMOJIS = ['🍎','🐱','🦋','🎈','🌸','🐸','🍕','🦊','🐬','🌻','🍓','🐨','🍦','⭐'];
+const PRAISE  = ['Kjempebra! 🎉','Riktig! ⭐','Ja! 🌟','Super! 💫','Perfekt! 🏆','Du er flink! 🦋'];
+const OOPS    = ['Prøv igjen! 💪','Nesten! 🤔','Se nøye! 👀','Du klarer det! 🌈'];
+const QS = 10;
+
+const SEGS = [
+  { id:1, emoji:'🔢', name:'Tall og mengder', desc:'Tell og gjenkjenn tall 1–10',
+    why:'Kjenner du tallene godt, er resten mye enklere!',
+    skills:['Telle til 10','Se hvor mange','Tall på tallinja'],
+    color:'#7C4DFF', glow:'rgba(124,77,255,.5)', grad:'linear-gradient(135deg,#4A148C,#7C4DFF)' },
+  { id:2, emoji:'🥚', name:'Vennetall', desc:'Tallpar som gir 10',
+    why:'Vennetallene er hemmeligheten til rask addisjon! 3+7, 6+4, 1+9…',
+    skills:['1+9  2+8  3+7','Fyll kartongen','Finn det som mangler'],
+    color:'#2E7D32', glow:'rgba(46,125,50,.5)', grad:'linear-gradient(135deg,#1B5E20,#43A047)' },
+  { id:3, emoji:'➕', name:'Addisjon', desc:'Legg sammen innen 10',
+    why:'Plusse er den viktigste regneoperasjonen i 2. klasse.',
+    skills:['Legg til visuelt','Hopp på tallinja','Plusstykker'],
+    color:'#0277BD', glow:'rgba(2,119,189,.5)', grad:'linear-gradient(135deg,#01579B,#0288D1)' },
+  { id:4, emoji:'➖', name:'Subtraksjon', desc:'Ta bort og tell innen 10',
+    why:'Minus er like viktig som pluss — og lettere når du forstår det visuelt!',
+    skills:['Ta bort emojier','Gå bakover','Minustykker'],
+    color:'#BF360C', glow:'rgba(191,54,12,.5)', grad:'linear-gradient(135deg,#BF360C,#F4511E)' },
+  { id:5, emoji:'🔡', name:'Tallrekken', desc:'Rekkefølge og mønster til 20',
+    why:'Å telle til 20 og kjenne tallrekken er grunnlaget for 2. klasse!',
+    skills:['Hva kommer neste?','Sorter tallene','Tall 11–20'],
+    color:'#AD1457', glow:'rgba(173,20,87,.5)', grad:'linear-gradient(135deg,#880E4F,#E91E63)' },
+];
+
+const RANKS = [
+  { min:0,  title:'Matteelev',      emoji:'📚' },
+  { min:2,  title:'Mattestjerne',   emoji:'⭐' },
+  { min:5,  title:'Romfarer',        emoji:'🚀' },
+  { min:9,  title:'Galaksemester',  emoji:'🌌' },
+  { min:13, title:'Universets Helt', emoji:'🌟' },
+];
+const getRank = stars => [...RANKS].reverse().find(r => stars >= r.min) || RANKS[0];
+
+// ── SOUND ENGINE (game SFX only — music via YouTube) ───────
+let _ac = null;
+const getAC = () => {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+};
+function tone(hz, dur, vol=.25, wave='sine', delay=0) {
+  try {
+    const c=getAC(), o=c.createOscillator(), g=c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type=wave; o.frequency.value=hz;
+    g.gain.setValueAtTime(vol, c.currentTime+delay);
+    g.gain.exponentialRampToValueAtTime(.001, c.currentTime+delay+dur);
+    o.start(c.currentTime+delay); o.stop(c.currentTime+delay+dur);
+  } catch(e){}
+}
+const SFX = {
+  tap:     () => tone(700,.07,.12),
+  place:   () => tone(900,.09,.14),
+  lift:    () => tone(600,.07,.1),
+  correct: () => { [523,659,784].forEach((f,i) => tone(f,.22,.28,'sine',i*.1)); },
+  wrong:   () => { tone(260,.1,.22,'sawtooth'); tone(200,.12,.18,'sawtooth',.12); },
+  streak:  () => { [523,659,784,1047].forEach((f,i) => tone(f,.18,.3,'triangle',i*.08)); },
+  win:     () => { [523,659,784,1047,1175,1319].forEach((f,i) => tone(f,.28,.25,'sine',i*.1)); },
+};
+
+// ── UTILITIES ──────────────────────────────────────────────
+const rnd  = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = a => a[Math.floor(Math.random()*a.length)];
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
+function opts3(correct,mn,mx,d=0.5){
+  let pool=[];
+  for(let i=mn;i<=mx;i++) if(i!==correct) pool.push(i);
+  if(pool.length<2){for(let i=1;i<=20;i++) if(i!==correct&&!pool.includes(i)) pool.push(i);}
+  pool.sort((a,b)=>Math.abs(a-correct)-Math.abs(b-correct));
+  // Easy: skip 2 closest (distractors far away); Hard: use closest (hard to distinguish)
+  const skip=d<.3?Math.min(2,pool.length-2):0;
+  return shuffle([correct,...shuffle(pool.slice(skip,skip+6)).slice(0,2)]);
+}
+
+// ── LOCALSTORAGE ───────────────────────────────────────────
+const LS_KEY = 'talleventyret_v2';
+function loadProgress() {
+  try { const s=localStorage.getItem(LS_KEY); if(s) return JSON.parse(s); } catch(e){}
+  return {1:{stars:0},2:{stars:0},3:{stars:0},4:{stars:0},5:{stars:0}};
+}
+function saveProgress(prog) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(prog)); } catch(e){}
+}
+
+// ── QUESTION GENERATORS ────────────────────────────────────
+const GEN = {
+  1(d){
+    const mx=d<.3?4:d<.6?7:10,n=rnd(1,mx),em=pick(EMOJIS);
+    const t=pick(['btn','btn','slid','nline',...(d>=.5?['drag_sort']:['btn'])]);
+    if(t==='btn')   return{type:'btn',  sub:'count',n,em,q:`Hvor mange ${em} ser du?`,          ans:n,opts:opts3(n,1,mx,d)};
+    if(t==='slid')  return{type:'slid', sub:'count',n,em,q:'Dra skyveknappen til riktig tall!', ans:n,mn:1,mx};
+    if(t==='nline') return{type:'nline',sub:'count',n,em,q:'Trykk på riktig tall på tallinja!', ans:n,mn:1,mx};
+    const s=rnd(1,Math.max(1,mx-3));return{type:'drag_sort',q:'Sorter tallene fra minst til størst!',nums:shuffle([s,s+1,s+2,s+3]),order:[s,s+1,s+2,s+3]};
+  },
+  2(d){
+    const fMax=d<.3?4:d<.6?7:9,f=rnd(1,fMax),m=10-f;
+    const t=pick(['btn','btn','slid','fill']);
+    if(t==='btn')  return{type:'btn', sub:'egg',f,q:`Det er ${f} egg — hvor mange mangler?`, ans:m,opts:opts3(m,1,9,d)};
+    if(t==='slid') return{type:'slid',sub:'egg',f,q:`${f} og ___ er 10. Dra skyveknappen!`,   ans:m,mn:1,mx:9};
+    return{type:'fill',sub:'egg',f,q:'Trykk tomme plasser for å fylle kartongen!',ans:m};
+  },
+  3(d){
+    const mx=d<.3?5:d<.6?8:10,sum=rnd(2,mx),a=rnd(1,sum-1),b=sum-a,em=pick(EMOJIS);
+    const t=pick(['btn','btn','slid','nline']);
+    if(t==='btn')  return{type:'btn', sub:'add',a,b,em,q:`${a} + ${b} = ?`,     ans:sum,opts:opts3(sum,2,10,d)};
+    if(t==='slid') return{type:'slid',sub:'add',a,b,em,q:`${a} pluss ${b} = ?`, ans:sum,mn:1,mx:12};
+    return{type:'nline',sub:'addl',a,b,q:`Start på ${a} og hopp ${b} steg!`,ans:sum,mn:1,mx:12};
+  },
+  4(d){
+    const nMax=d<.3?4:d<.6?7:10,nMin=d<.3?2:3;
+    const n=rnd(nMin,nMax),k=rnd(1,n-1),r=n-k,em=pick(EMOJIS);
+    const t=pick(['btn','btn','slid','tap']);
+    if(t==='btn')  return{type:'btn', sub:'sub',n,k,em,q:`${n} − ${k} = ?`,                     ans:r,opts:opts3(r,1,n,d)};
+    if(t==='slid') return{type:'slid',sub:'sub',n,k,em,q:`${n} minus ${k} = ?`,                 ans:r,mn:0,mx:n};
+    return{type:'tap',sub:'sub',n,k,em,q:`Trykk bort ${k} ${em} — hvor mange er igjen?`,ans:r,remove:k,aopts:opts3(r,Math.max(1,r-3),Math.min(n,r+3),d)};
+  },
+  5(d){
+    const mx=d<.3?10:d<.6?15:20;
+    const t=pick(['btn','btn','drag_sort','nline']);
+    if(t==='btn'){
+      if(Math.random()>.5){const n=rnd(1,mx-1);return{type:'btn',sub:'next',n,q:`Hva kommer etter ${n}?`,ans:n+1,opts:opts3(n+1,1,mx,d)};}
+      else{const n=rnd(2,mx);return{type:'btn',sub:'prev',n,q:`Hva kommer før ${n}?`,ans:n-1,opts:opts3(n-1,1,mx,d)};}
+    }
+    if(t==='drag_sort'){const s=rnd(1,mx-3);return{type:'drag_sort',q:'Sorter tallene fra minst til størst!',nums:shuffle([s,s+1,s+2,s+3]),order:[s,s+1,s+2,s+3]};}
+    const n=rnd(1,mx);return{type:'nline',sub:'find',n,q:`Finn ${n} på tallinja!`,ans:n,mn:1,mx};
+  },
+};
+function buildQs(sid){return Array.from({length:QS},(_,i)=>{let q,t=0;do{q=GEN[sid](i/QS);t++;}while(!q&&t<10);return q||GEN[sid](.5);});}
+
+// ── SHARED COMPONENTS ──────────────────────────────────────
+function EmojiGrid({n,em,faded=new Set(),onTap=null,tapMax=0}){
+  const sz=n<=4?52:n<=6?42:n<=8?34:28;
+  return(
+    <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',alignItems:'center',gap:n<=5?10:5,background:'rgba(255,255,255,.05)',borderRadius:20,padding:18,width:'100%',minHeight:110}}>
+      {Array.from({length:n},(_,i)=>{
+        const gone=faded.has(i),canTap=onTap&&!gone&&faded.size<tapMax;
+        return(<span key={i} className={gone?'':'pop'} onClick={()=>canTap&&(SFX.tap(),onTap(i))}
+          style={{fontSize:sz,lineHeight:1,display:'inline-block',position:'relative',opacity:gone?.15:1,cursor:canTap?'pointer':'default',animationDelay:`${i*.06}s`,transition:'opacity .2s'}}>
+          {em}{gone&&<span style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:sz*.55}}>❌</span>}
+        </span>);
+      })}
+    </div>
+  );
+}
+
+function EggCarton({filled,extra=new Set(),onTap=null}){
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center'}}>
+      {[0,1].map(row=>(
+        <div key={row} style={{display:'flex',gap:8}}>
+          {Array.from({length:5},(_,col)=>{
+            const idx=row*5+col,isFill=idx<filled,isXtra=extra.has(idx),canTap=!isFill&&!isXtra&&onTap;
+            return(<div key={col} onClick={()=>canTap&&(SFX.tap(),onTap(idx))}
+              style={{width:50,height:50,borderRadius:'50%',background:(isFill||isXtra)?'#FFD54F':'rgba(255,255,255,.06)',border:(isFill||isXtra)?'2px solid #F9A825':'2px dashed rgba(255,255,255,.18)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,cursor:canTap?'pointer':'default',transition:'all .15s',boxShadow:(isFill||isXtra)?'0 2px 8px rgba(249,168,37,.3)':'none'}}>
+              {(isFill||isXtra)?'🥚':''}
+            </div>);
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NumLine({mn,mx,sel,onSel,startAt=null}){
+  const nums=[];
+  for(let i=mn;i<=mx;i++) nums.push(i);
+  const sz=mx>15?30:mx>10?32:34;
+  const fs=mx>15?11:13;
+  return(
+    <div style={{width:'100%',padding:'4px 4px'}}>
+      <div style={{display:'flex',flexWrap:'wrap',gap:4,justifyContent:'center'}}>
+        {nums.map(n=>{
+          const isSel=n===sel,isStart=n===startAt;
+          return(<div key={n} onClick={()=>{SFX.tap();onSel(n);}}
+            style={{width:sz,height:sz,borderRadius:'50%',background:isSel?'#7C4DFF':isStart?'#43A047':'rgba(255,255,255,.07)',border:`2px solid ${isSel?'#E040FB':isStart?'#66BB6A':'rgba(255,255,255,.14)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:fs,fontWeight:900,color:isSel||isStart?'#fff':'#B09FD8',cursor:'pointer',transition:'all .12s',transform:isSel?'scale(1.2)':'scale(1)',flexShrink:0}}>
+            {n}
+          </div>);
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── QUESTION RENDERERS ─────────────────────────────────────
+function AnsBtn({val,fb,selVal,correct,onAns}){
+  const isOk=fb==='ok'&&val===correct,isNo=fb==='no'&&val===selVal;
+  return(
+    <button className="game-btn" onClick={()=>{SFX.tap();onAns(val);}} disabled={!!fb}
+      style={{width:val>=10?100:90,height:90,borderRadius:22,background:isOk?'#2E7D32':isNo?'#B71C1C':'rgba(255,255,255,.08)',color:'#fff',fontSize:val>=10?30:44,fontWeight:900,border:`2px solid ${isOk?'#66BB6A':isNo?'#EF5350':'rgba(255,255,255,.14)'}`,animation:isNo?'shake .5s ease':isOk?'bop .5s ease':'none',transition:'background .2s'}}>
+      {val}
+    </button>
+  );
+}
+
+function BtnQ({q,fb,selVal,onAns}){
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:18}}>
+      {q.sub==='count'&&<EmojiGrid n={q.n} em={q.em}/>}
+      {q.sub==='egg'&&<EggCarton filled={q.f}/>}
+      {q.sub==='add'&&(
+        <div style={{display:'flex',alignItems:'center',gap:10,justifyContent:'center',flexWrap:'wrap',width:'100%'}}>
+          <div style={{background:'rgba(255,255,255,.07)',borderRadius:16,padding:12,display:'flex',flexWrap:'wrap',gap:4,justifyContent:'center',minWidth:68,minHeight:64,alignContent:'center'}}>
+            {Array.from({length:q.a},(_,i)=><span key={i} className="pop" style={{fontSize:28,lineHeight:1,animationDelay:`${i*.06}s`}}>{q.em}</span>)}
+          </div>
+          <span style={{fontSize:44,fontWeight:900,color:'#7C4DFF'}}>+</span>
+          <div style={{background:'rgba(255,255,255,.07)',borderRadius:16,padding:12,display:'flex',flexWrap:'wrap',gap:4,justifyContent:'center',minWidth:68,minHeight:64,alignContent:'center'}}>
+            {Array.from({length:q.b},(_,i)=><span key={i} className="pop" style={{fontSize:28,lineHeight:1,animationDelay:`${(q.a+i)*.06}s`}}>{q.em}</span>)}
+          </div>
+          <span style={{fontSize:44,fontWeight:900,color:'#7C4DFF'}}>=</span>
+          <div style={{width:64,height:64,borderRadius:16,background:'rgba(255,255,255,.05)',border:'2px dashed rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,color:'#B09FD8',fontWeight:900}}>?</div>
+        </div>
+      )}
+      {q.sub==='sub'&&<div style={{fontSize:52,fontWeight:900,color:'#fff',textAlign:'center',letterSpacing:2}}>{q.n} <span style={{color:'#F4511E'}}>−</span> {q.k} = <span style={{color:'#B09FD8'}}>?</span></div>}
+      {q.sub==='next'&&<div style={{fontSize:70,fontWeight:900,color:'#fff',textAlign:'center'}}>{q.n} <span style={{color:'#B09FD8'}}>→ ?</span></div>}
+      {q.sub==='prev'&&<div style={{fontSize:70,fontWeight:900,color:'#fff',textAlign:'center'}}><span style={{color:'#B09FD8'}}>? →</span> {q.n}</div>}
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        {q.opts.map(v=><AnsBtn key={v} val={v} fb={fb} selVal={selVal} correct={q.ans} onAns={onAns}/>)}
+      </div>
+    </div>
+  );
+}
+
+function SlidQ({q,fb,onAns}){
+  const [val,setVal]=useState(q.mn);
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:18}}>
+      {q.sub==='count'&&<EmojiGrid n={q.n} em={q.em}/>}
+      {q.sub==='egg'&&<EggCarton filled={q.f}/>}
+      {q.sub==='add'&&<div style={{fontSize:50,fontWeight:900,color:'#fff',textAlign:'center'}}>{q.a} <span style={{color:'#0288D1'}}>+</span> {q.b} <span style={{color:'#B09FD8'}}>=</span> ?</div>}
+      {q.sub==='sub'&&<div style={{fontSize:50,fontWeight:900,color:'#fff',textAlign:'center'}}>{q.n} <span style={{color:'#F4511E'}}>−</span> {q.k} <span style={{color:'#B09FD8'}}>=</span> ?</div>}
+      <div style={{fontSize:80,fontWeight:900,color:'#fff',textShadow:'0 0 24px rgba(124,77,255,.7)',lineHeight:1,minHeight:90,display:'flex',alignItems:'center'}}>{val}</div>
+      <div style={{width:'100%',padding:'0 16px'}}>
+        <input type="range" className="slid-t" min={q.mn} max={q.mx} value={val} onChange={e=>{SFX.tap();setVal(+e.target.value);}} disabled={!!fb}/>
+        <div style={{display:'flex',justifyContent:'space-between',color:'#B09FD8',fontSize:13,fontWeight:700,marginTop:4}}><span>{q.mn}</span><span>{q.mx}</span></div>
+      </div>
+      {!fb&&<button className="game-btn" onClick={()=>{SFX.tap();onAns(val);}}
+        style={{background:'linear-gradient(135deg,#7C4DFF,#E040FB)',color:'#fff',borderRadius:50,padding:'14px 44px',fontSize:19,fontWeight:900,boxShadow:'0 6px 20px rgba(124,77,255,.5)'}}>
+        Det er {val}! ✓
+      </button>}
+    </div>
+  );
+}
+
+function NLineQ({q,fb,onAns}){
+  const [sel,setSel]=useState(null);
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:18}}>
+      {q.sub==='count'&&<EmojiGrid n={q.n} em={q.em}/>}
+      {q.sub==='addl'&&<div style={{fontSize:40,fontWeight:900,color:'#fff',textAlign:'center'}}><span style={{color:'#43A047'}}>{q.a}</span> + {q.b} <span style={{color:'#B09FD8'}}>=</span> ?</div>}
+      {q.sub==='find'&&<div style={{fontSize:80,fontWeight:900,color:'#fff',lineHeight:1}}>{q.n}</div>}
+      <NumLine mn={q.mn} mx={q.mx} sel={sel} onSel={s=>{if(!fb)setSel(s);}} startAt={q.a??null}/>
+      {sel!==null&&!fb&&<button className="game-btn" onClick={()=>{SFX.tap();onAns(sel);}}
+        style={{background:'linear-gradient(135deg,#7C4DFF,#E040FB)',color:'#fff',borderRadius:50,padding:'14px 44px',fontSize:19,fontWeight:900,boxShadow:'0 6px 20px rgba(124,77,255,.5)'}}>
+        Det er {sel}! ✓
+      </button>}
+    </div>
+  );
+}
+
+function TapQ({q,fb,onAns}){
+  const [gone,setGone]=useState(new Set());
+  const [selAns,setSelAns]=useState(null);
+  const done=gone.size===q.remove;
+  const aopts=q.aopts||opts3(q.ans,Math.max(1,q.ans-3),Math.min(q.n,q.ans+3));
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:16}}>
+      <EmojiGrid n={q.n} em={q.em} faded={gone} onTap={i=>{if(!done){const s=new Set(gone);s.add(i);setGone(s);}}} tapMax={q.remove}/>
+      {!done&&<div style={{fontSize:17,color:'#B09FD8',fontWeight:700}}>Trykk bort {q.remove-gone.size} til {q.em}</div>}
+      {done&&(
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+          <div style={{fontSize:20,color:'#fff',fontWeight:700}}>Hvor mange er igjen?</div>
+          <div style={{display:'flex',gap:12}}>{aopts.map(v=><AnsBtn key={v} val={v} fb={fb} selVal={selAns} correct={q.ans} onAns={v=>{setSelAns(v);onAns(v);}}/>)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FillQ({q,fb,onAns}){
+  const [extra,setExtra]=useState(new Set());
+  const done=extra.size===q.ans;
+  useEffect(()=>{if(done&&!fb) setTimeout(()=>onAns(q.ans),300);},[done]);
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:16}}>
+      <EggCarton filled={q.f} extra={extra} onTap={idx=>{if(!done&&!fb){const s=new Set(extra);s.add(idx);setExtra(s);}}}/>
+      <div style={{fontSize:17,fontWeight:700,color:done?'#66BB6A':'#B09FD8',transition:'color .3s'}}>{done?'Kartongen er full! ✓':`${q.ans-extra.size} plasser igjen`}</div>
+    </div>
+  );
+}
+
+function DragSortQ({q,onAns}){
+  const [slots,setSlots]=useState(new Array(q.order.length).fill(null));
+  const [pool,setPool]=useState(shuffle([...q.nums]));
+  const [picked,setPicked]=useState(null);
+  const [wrongFlash,setWrongFlash]=useState(false);
+  const [success,setSuccess]=useState(false);
+  const allFilled=s=>s.every(v=>v!==null);
+  const isCorrect=s=>s.every((v,i)=>v===q.order[i]);
+  function pickTile(val){SFX.lift();setPicked(p=>p===val?null:val);}
+  function clickSlot(idx){
+    if(success) return;
+    if(picked===null){
+      if(slots[idx]!==null){SFX.lift();const val=slots[idx];setPicked(val);const ns=[...slots];ns[idx]=null;setSlots(ns);setPool(p=>[...p,val]);}
+      return;
+    }
+    SFX.place();
+    const ns=[...slots],np=pool.filter(v=>v!==picked);
+    if(ns[idx]!==null) np.push(ns[idx]);
+    for(let i=0;i<ns.length;i++) if(ns[i]===picked) ns[i]=null;
+    ns[idx]=picked;setSlots(ns);setPool(np);setPicked(null);
+    if(allFilled(ns)){
+      if(isCorrect(ns)){setSuccess(true);setTimeout(()=>onAns('ok'),500);}
+      else{SFX.wrong();setWrongFlash(true);setTimeout(()=>{setSlots(new Array(q.order.length).fill(null));setPool(shuffle([...q.nums]));setWrongFlash(false);setPicked(null);},900);}
+    }
+  }
+  return(
+    <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:20}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:700,color:'#B09FD8'}}>
+        <span style={{color:'#66BB6A'}}>⬅ Minst</span>
+        <span style={{flex:1,height:2,background:'linear-gradient(90deg,#66BB6A,#E040FB)',borderRadius:1}}/>
+        <span style={{color:'#E040FB'}}>Størst ➡</span>
+      </div>
+      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+        {slots.map((val,i)=>{
+          const occ=val!==null,isTarget=picked!==null&&!occ;
+          return(<div key={i} onClick={()=>clickSlot(i)}
+            style={{width:68,height:68,borderRadius:18,background:success&&occ?'rgba(67,160,71,.35)':wrongFlash&&occ?'rgba(183,28,28,.35)':occ?'rgba(124,77,255,.2)':isTarget?'rgba(124,77,255,.1)':'rgba(255,255,255,.05)',border:`2px ${occ?'solid':'dashed'} ${success&&occ?'#66BB6A':wrongFlash&&occ?'#EF5350':occ?'#9C7CB8':isTarget?'#7C4DFF':'rgba(255,255,255,.2)'}`,display:'flex',alignItems:'center',justifyContent:'center',cursor:picked!==null||occ?'pointer':'default',animation:wrongFlash&&occ?'shake .5s ease':success&&occ?'successGlow 1s ease infinite':'none',transition:'all .2s',boxShadow:isTarget?'0 0 14px rgba(124,77,255,.35)':success&&occ?'0 0 14px rgba(67,160,71,.5)':'none'}}>
+            {val!==null&&<span style={{fontSize:32,fontWeight:900,color:success?'#A5D6A7':'#fff'}}>{val}</span>}
+          </div>);
+        })}
+      </div>
+      <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',minHeight:82}}>
+        {pool.length===0&&!success&&<div style={{height:72,display:'flex',alignItems:'center',color:'#B09FD8',fontSize:15,fontWeight:700}}>Alle tall er plassert!</div>}
+        {success&&<div style={{height:72,display:'flex',alignItems:'center',fontSize:24,fontWeight:900,color:'#66BB6A',animation:'pop .4s ease'}}>Riktig rekkefølge! 🎉</div>}
+        {!success&&pool.map(n=>{
+          const isPicked=picked===n;
+          return(<div key={n} onClick={()=>pickTile(n)}
+            style={{width:70,height:70,borderRadius:20,background:isPicked?'rgba(124,77,255,.4)':'rgba(255,255,255,.09)',border:`3px solid ${isPicked?'#7C4DFF':'rgba(255,255,255,.2)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,fontWeight:900,color:'#fff',cursor:'pointer',transform:isPicked?'scale(1.12) translateY(-6px)':'scale(1)',boxShadow:isPicked?'0 10px 28px rgba(124,77,255,.6),0 0 0 2px #E040FB':'none',transition:'all .15s',userSelect:'none',WebkitUserSelect:'none'}}>
+            {n}
+          </div>);
+        })}
+      </div>
+      {picked!==null&&<div style={{fontSize:14,color:'#B09FD8',fontWeight:700}}>Trykk en boks for å plassere <span style={{color:'#fff',fontSize:16}}>{picked}</span></div>}
+    </div>
+  );
+}
+
+// ── STAR SHOWER ────────────────────────────────────────────
+function StarShower(){
+  const stars=Array.from({length:16},()=>({
+    left:`${4+Math.random()*92}%`,
+    delay:`${Math.random()*.9}s`,
+    size:`${18+Math.random()*22}px`,
+    dur:`${1.1+Math.random()*.8}s`,
+  }));
+  return(
+    <div style={{position:'fixed',inset:0,pointerEvents:'none',overflow:'hidden',zIndex:50}}>
+      {stars.map((s,i)=>(
+        <div key={i} style={{position:'absolute',top:0,left:s.left,fontSize:s.size,animation:`starFall ${s.dur} ease-in ${s.delay} forwards`}}>⭐</div>
+      ))}
+    </div>
+  );
+}
+
+// ── RANK UP MODAL ──────────────────────────────────────────
+function RankUpModal({rank,onClose}){
+  useEffect(()=>{const t=setTimeout(onClose,3200);return()=>clearTimeout(t);},[]);
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200}}>
+      <div style={{textAlign:'center',animation:'rankBurst .5s ease both'}}>
+        <div style={{fontSize:90,marginBottom:10}}>{rank.emoji}</div>
+        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:18,color:'#B09FD8',letterSpacing:3,marginBottom:8}}>NY TITTEL!</div>
+        <div style={{fontFamily:"'Fredoka One',cursive",fontSize:42,color:'#FFD700',textShadow:'0 0 28px gold'}}>{rank.title}</div>
+        <div style={{fontSize:14,color:'rgba(255,255,255,.4)',marginTop:18,fontWeight:700}}>Trykk for å fortsette</div>
+      </div>
+    </div>
+  );
+}
+
+// ── INFO MODAL ─────────────────────────────────────────────
+function InfoModal({seg,onClose}){
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:24,zIndex:100}}>
+      <div onClick={e=>e.stopPropagation()} className="pop"
+        style={{background:'#1A0840',border:`2px solid ${seg.color}70`,borderRadius:22,padding:24,maxWidth:340,width:'100%',position:'relative'}}>
+        {/* Lukk-knapp øverst til høyre */}
+        <button onClick={()=>{SFX.tap();onClose();}}
+          style={{position:'absolute',top:14,right:14,background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.7)',border:'1px solid rgba(255,255,255,.2)',borderRadius:'50%',width:32,height:32,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background .15s'}}
+          className="info-btn">
+          ✕
+        </button>
+        <div style={{fontSize:44,textAlign:'center',marginBottom:10}}>{seg.emoji}</div>
+        <h2 style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:'#fff',textAlign:'center',margin:'0 0 10px'}}>{seg.name}</h2>
+        <p style={{fontSize:15,color:'#B09FD8',fontWeight:700,lineHeight:1.5,marginBottom:14}}>{seg.why}</p>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {seg.skills.map(s=><span key={s} style={{fontSize:12,fontWeight:700,background:`${seg.color}25`,color:'rgba(255,255,255,.85)',border:`1px solid ${seg.color}45`,borderRadius:8,padding:'4px 10px'}}>{s}</span>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MUTE BUTTON ────────────────────────────────────────────
+function MuteBtn({muted,onToggle}){
+  return(
+    <button onClick={()=>{SFX.tap();onToggle();}}
+      style={{background:'rgba(255,255,255,.08)',color:'rgba(255,255,255,.7)',border:'1px solid rgba(255,255,255,.15)',borderRadius:'50%',width:36,height:36,fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,transition:'background .15s'}}>
+      {muted?'🔇':'🔊'}
+    </button>
+  );
+}
+
+// ── MAP SCREEN ─────────────────────────────────────────────
+function SegCard({seg,prog,onPlay,onInfo}){
+  const p=prog[seg.id]||{stars:0};
+  return(
+    <div className="seg-card" onClick={()=>{SFX.tap();onPlay(seg.id);}}
+      style={{background:'rgba(255,255,255,.06)',borderRadius:20,border:'2px solid rgba(255,255,255,.08)',padding:'14px 16px',display:'flex',gap:14,alignItems:'center',cursor:'pointer',WebkitTapHighlightColor:'transparent',userSelect:'none'}}>
+      <div style={{textAlign:'center',minWidth:50}}>
+        <div style={{fontSize:32}}>{seg.emoji}</div>
+        <div style={{fontSize:18,letterSpacing:1,marginTop:4}}>
+          {[1,2,3].map(s=>(
+            <span key={s} style={{color:s<=p.stars?'#FFD700':'rgba(255,255,255,.25)',filter:s<=p.stars?'drop-shadow(0 0 4px gold)':'none'}}>
+              {s<=p.stars?'★':'☆'}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:17,fontWeight:900,color:'#fff',fontFamily:"'Fredoka One',cursive"}}>{seg.name}</div>
+        <div style={{fontSize:12,color:'#9C86C8',fontWeight:700,marginTop:2}}>{seg.desc}</div>
+      </div>
+      <button className="info-btn" onClick={e=>{e.stopPropagation();SFX.tap();onInfo(seg);}}
+        style={{background:'rgba(255,255,255,.08)',color:'#9C86C8',border:'1px solid rgba(255,255,255,.15)',borderRadius:'50%',width:34,height:34,fontSize:16,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}>
+        ℹ
+      </button>
+    </div>
+  );
+}
+
+function MapScreen({prog,onPlay,muted,onMute}){
+  const [infoSeg,setInfoSeg]=useState(null);
+  const totalStars=Object.values(prog).reduce((s,p)=>s+(p.stars||0),0);
+  const rank=getRank(totalStars);
+  return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#100820 0%,#1A0840 55%,#0D1030 100%)',fontFamily:"'Nunito',cursive",padding:'24px 16px',display:'flex',flexDirection:'column',alignItems:'center',position:'relative'}}>
+      {infoSeg&&<InfoModal seg={infoSeg} onClose={()=>setInfoSeg(null)}/>}
+      <div style={{position:'absolute',top:16,right:16}}><MuteBtn muted={muted} onToggle={onMute}/></div>
+      <div style={{textAlign:'center',marginBottom:24}}>
+        <div className="float" style={{fontSize:52,marginBottom:8}}>🎮</div>
+        <h1 style={{fontFamily:"'Fredoka One',cursive",fontSize:38,color:'#fff',textShadow:'0 0 28px rgba(124,77,255,.8)',margin:0}}>Talleventyret</h1>
+        <div style={{marginTop:12,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+          <div style={{fontSize:34}}>{rank.emoji}</div>
+          <div style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:'#FFD700',textShadow:'0 0 12px rgba(255,215,0,.45)'}}>{rank.title}</div>
+          {totalStars>0&&<div style={{fontSize:13,color:'#B09FD8',fontWeight:700,marginTop:2}}>⭐ {totalStars} stjerner</div>}
+        </div>
+      </div>
+      <div style={{width:'100%',maxWidth:520,display:'flex',flexDirection:'column',gap:10}}>
+        {SEGS.map(seg=><SegCard key={seg.id} seg={seg} prog={prog} onPlay={onPlay} onInfo={setInfoSeg}/>)}
+      </div>
+    </div>
+  );
+}
+
+// ── GAME SCREEN ────────────────────────────────────────────
+function GameScreen({sess,seg,onAns,onBack,muted,onMute}){
+  const [fb,setFb]=useState(null);
+  const [selVal,setSelVal]=useState(null);
+  const [fbTxt,setFbTxt]=useState('');
+  const q=sess.qs[sess.qi];
+  useEffect(()=>{setFb(null);setSelVal(null);},[sess.qi]);
+  function handle(val){
+    if(fb) return;
+    const isOk=(q.type==='drag_sort'||q.type==='fill')?(val==='ok'||val===q.ans):val===q.ans;
+    setSelVal(val);
+    if(isOk){SFX.correct();if(sess.streak>=4)SFX.streak();setFbTxt(pick(PRAISE));setFb('ok');onAns(true);}
+    else{SFX.wrong();setFbTxt(pick(OOPS));setFb('no');onAns(false);setTimeout(()=>{setFb(null);setSelVal(null);},1050);}
+  }
+  const pct=(sess.qi/QS)*100;
+  return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#100820 0%,#1A0840 55%,#0D1030 100%)',display:'flex',flexDirection:'column',alignItems:'center',fontFamily:"'Nunito',cursive",padding:'14px 14px 24px',gap:10}}>
+      <div style={{width:'100%',maxWidth:520,display:'flex',flexDirection:'column',gap:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <button onClick={onBack} style={{background:'rgba(255,255,255,.08)',color:'#9C86C8',borderRadius:12,padding:'7px 13px',fontSize:13,fontWeight:700}}>← Kart</button>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:18}}>{seg.emoji}</span>
+            <span style={{fontSize:15,fontWeight:900,color:'#fff',fontFamily:"'Fredoka One',cursive"}}>{seg.name}</span>
+          </div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            {sess.streak>=3&&<span style={{fontSize:22}}>🔥</span>}
+            <MuteBtn muted={muted} onToggle={onMute}/>
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:12,color:'#9C86C8',fontWeight:700,minWidth:38}}>{sess.qi}/{QS}</span>
+          <div style={{flex:1,background:'rgba(255,255,255,.08)',borderRadius:20,height:8}}>
+            <div style={{height:'100%',background:seg.grad,borderRadius:20,width:`${pct}%`,transition:'width .5s ease'}}/>
+          </div>
+        </div>
+      </div>
+      <div className="sup" key={sess.qi}
+        style={{background:'rgba(255,255,255,.06)',borderRadius:28,border:`1px solid ${seg.color}35`,padding:'22px 18px',width:'100%',maxWidth:520,flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:16,justifyContent:'space-between',minHeight:460}}>
+        <div style={{textAlign:'center',width:'100%'}}>
+          <h2 style={{fontSize:21,fontWeight:900,color:'#fff',margin:0,lineHeight:1.3}}>{q.q}</h2>
+        </div>
+        <div style={{width:'100%',flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14}}>
+          {q.type==='btn'      &&<BtnQ      q={q} fb={fb} selVal={selVal} onAns={handle}/>}
+          {q.type==='slid'     &&<SlidQ     q={q} fb={fb}                 onAns={handle}/>}
+          {q.type==='nline'    &&<NLineQ    q={q} fb={fb}                 onAns={handle}/>}
+          {q.type==='tap'      &&<TapQ      q={q} fb={fb}                 onAns={handle}/>}
+          {q.type==='fill'     &&<FillQ     q={q} fb={fb}                 onAns={handle}/>}
+          {q.type==='drag_sort'&&<DragSortQ q={q}                         onAns={handle}/>}
+        </div>
+        <div style={{minHeight:44,display:'flex',alignItems:'center',justifyContent:'center',width:'100%'}}>
+          {fb==='ok'&&<div style={{fontSize:22,fontWeight:900,color:'#66BB6A',animation:'pop .4s ease'}}>{fbTxt}{sess.streak>=3&&' 🔥'}</div>}
+          {fb==='no'&&<div style={{fontSize:20,fontWeight:900,color:'#EF5350'}}>{fbTxt}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── RESULT SCREEN ──────────────────────────────────────────
+function ResultScreen({sess,seg,onReplay,onMap}){
+  const pct=sess.correct/QS;
+  const stars=pct>=.9?3:pct>=.7?2:pct>=.5?1:0;
+  const {icon,msg}=pct===1?{icon:'🏆',msg:'Perfekt! Du er en matteekspert!'}:pct>=.8?{icon:'🌟',msg:'Veldig bra jobbet!'}:pct>=.6?{icon:'😊',msg:'Bra! Øv litt mer!'}:{icon:'💪',msg:'Godt forsøk! Prøv igjen!'};
+  useEffect(()=>{if(pct>=.8) SFX.win();},[]);
+  return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#100820 0%,#1A0840 55%,#0D1030 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontFamily:"'Nunito',cursive",padding:24,gap:20}}>
+      {stars===3&&<StarShower/>}
+      <div style={{fontSize:88,animation:'starSpin .8s ease both'}}>{icon}</div>
+      <div style={{textAlign:'center'}}>
+        <h1 style={{fontFamily:"'Fredoka One',cursive",fontSize:42,color:'#fff',margin:0}}>Ferdig!</h1>
+        <p style={{fontSize:19,color:'#B09FD8',fontWeight:700,margin:'8px 0 0'}}>{msg}</p>
+      </div>
+      <div style={{display:'flex',gap:16,justifyContent:'center'}}>
+        {[1,2,3].map(s=>(
+          <div key={s} style={{fontSize:54,animation:s<=stars?`starSpin .5s ease ${s*.2}s both`:'none',opacity:s<=stars?1:.28,color:s<=stars?'#FFD700':'#fff'}}>
+            {s<=stars?'⭐':'☆'}
+          </div>
+        ))}
+      </div>
+      <div style={{fontSize:20,fontWeight:900,color:'rgba(255,255,255,.8)'}}>
+        {sess.correct} av {QS} riktige
+      </div>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center'}}>
+        <button className="game-btn" onClick={()=>{SFX.tap();onReplay();}}
+          style={{background:seg.grad,color:'#fff',borderRadius:50,padding:'15px 38px',fontSize:19,fontWeight:900,boxShadow:`0 6px 20px ${seg.glow}`}}>
+          Spill igjen! 🔄
+        </button>
+        <button className="game-btn" onClick={()=>{SFX.tap();onMap();}}
+          style={{background:'rgba(255,255,255,.09)',color:'#fff',border:'2px solid rgba(255,255,255,.18)',borderRadius:50,padding:'15px 32px',fontSize:19,fontWeight:900}}>
+          Velg spill 🗺
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ROOT ───────────────────────────────────────────────────
+function TallEventyr(){
+  const [screen,setScreen]=useState('map');
+  const [prog,setProg]=useState(()=>loadProgress());
+  const [sid,setSid]=useState(null);
+  const [sess,setSess]=useState(null);
+  const [muted,setMuted]=useState(false);
+  const [rankUp,setRankUp]=useState(null);
+  const mutedRef=useRef(false);
+
+  // Start YouTube-musikk ved første brukerinteraksjon
+  useEffect(()=>{
+    const init=()=>{
+      if(!mutedRef.current) startYTMusic();
+    };
+    document.addEventListener('pointerdown',init,{once:true});
+    return()=>document.removeEventListener('pointerdown',init);
+  },[]);
+
+  function toggleMute(){
+    setMuted(m=>{
+      const next=!m;
+      mutedRef.current=next;
+      setYTMuted(next);
+      return next;
+    });
+  }
+
+  useEffect(()=>{ saveProgress(prog); },[prog]);
+
+  function startSession(segId){
+    setSid(segId);
+    setSess({qs:buildQs(segId),qi:0,streak:0,maxStreak:0,correct:0});
+    setScreen('game');
+  }
+
+  function handleAns(isOk){
+    setSess(prev=>{
+      if(!prev) return prev;
+      const streak=isOk?prev.streak+1:0;
+      return{...prev,streak,maxStreak:Math.max(prev.maxStreak,streak),correct:prev.correct+(isOk?1:0)};
+    });
+    if(isOk) setTimeout(()=>setSess(p=>p?{...p,qi:p.qi+1}:p),1380);
+  }
+
+  useEffect(()=>{
+    if(!sess||screen!=='game') return;
+    if(sess.qi>=QS){
+      const pct=sess.correct/QS;
+      const earned=pct>=.9?3:pct>=.7?2:pct>=.5?1:0;
+      const prevBest=prog[sid]?.stars||0;
+      const prevTotal=Object.values(prog).reduce((s,p)=>s+(p.stars||0),0);
+      const newProg={...prog,[sid]:{stars:Math.max(prevBest,earned)}};
+      const newTotal=Object.values(newProg).reduce((s,p)=>s+(p.stars||0),0);
+      setProg(newProg);
+      if(getRank(newTotal).min>getRank(prevTotal).min){
+        setTimeout(()=>setRankUp(getRank(newTotal)),2200);
+      }
+      setScreen('result');
+    }
+  },[sess?.qi]);
+
+  const seg=SEGS.find(s=>s.id===sid);
+  return(
+    <>
+      {rankUp&&<RankUpModal rank={rankUp} onClose={()=>setRankUp(null)}/>}
+      {screen==='map'   &&<MapScreen prog={prog} onPlay={startSession} muted={muted} onMute={toggleMute}/>}
+      {screen==='game'  &&sess&&seg&&sess.qi<QS&&<GameScreen sess={sess} seg={seg} onAns={handleAns} onBack={()=>setScreen('map')} muted={muted} onMute={toggleMute}/>}
+      {screen==='result'&&sess&&seg&&<ResultScreen sess={sess} seg={seg} onReplay={()=>startSession(sid)} onMap={()=>setScreen('map')}/>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<TallEventyr/>);
+</script>
+</body>
+</html>
