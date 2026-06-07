@@ -2,7 +2,7 @@
 
 Et mattespill for 1.–2. klasse laget for en 6-åring som gjøres klar til 2. klasse.
 
-🎮 **[Spill her](https://michaelrana.github.io/talleventyret)**
+🎮 **[Spill her](https://michaelaglen.github.io/Talleventyret/)**
 
 ---
 
